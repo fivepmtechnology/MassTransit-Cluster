@@ -11,7 +11,7 @@ namespace MassTransit.Cluster
 	{
 		private readonly ClusterSettings _settings;
 		private readonly IServiceBus _bus;
-		private readonly IList<uint> _clock;
+		private readonly List<uint> _clock;
 
 		internal ClusterService([NotNull] ClusterSettings settings, IServiceBus bus)
 		{
@@ -19,6 +19,7 @@ namespace MassTransit.Cluster
 			_bus = bus;
 
 			_clock = new List<uint>(_settings.SystemCount);
+			_clock.AddRange(Enumerable.Repeat(0u, _settings.SystemCount));
 		}
 
 		/// <summary>
