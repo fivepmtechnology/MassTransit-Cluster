@@ -10,11 +10,13 @@ namespace MassTransit.Cluster
 	class ClusterService : IBusService
 	{
 		private readonly ClusterSettings _settings;
+		private readonly IServiceBus _bus;
 		private readonly IList<uint> _clock;
 
 		internal ClusterService([NotNull] ClusterSettings settings, IServiceBus bus)
 		{
 			_settings = settings;
+			_bus = bus;
 
 			_clock = new List<uint>(_settings.SystemCount);
 		}
