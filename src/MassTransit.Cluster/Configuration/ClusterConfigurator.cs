@@ -8,8 +8,10 @@ namespace MassTransit.Cluster.Configuration
 {
 	class ClusterConfigurator : BusServiceConfigurator, IClusterConfigurator
 	{
+		private readonly ClusterSettings _settings = new ClusterSettings();
+
 		/// <summary>
-		/// Creates the service
+		/// Creates the cluster service instance
 		/// </summary>
 		/// <param name="bus"/>
 		/// <returns>
@@ -17,11 +19,11 @@ namespace MassTransit.Cluster.Configuration
 		/// </returns>
 		public IBusService Create(IServiceBus bus)
 		{
-			throw new NotImplementedException();
+			return new ClusterService(_settings, bus);
 		}
 
 		/// <summary>
-		/// Returns the type of the service created by the configurator
+		/// Returns the type of the service created by this configurator
 		/// </summary>
 		public Type ServiceType
 		{

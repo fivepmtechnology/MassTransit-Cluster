@@ -2,16 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MassTransit.Cluster.Configuration;
 using MassTransit.Util;
 
 namespace MassTransit.Cluster
 {
-	public class ClusterService : IBusService
+	class ClusterService : IBusService
 	{
 		private readonly ClusterSettings _settings;
 		private readonly IList<uint> _clock;
 
-		public ClusterService([NotNull] ClusterSettings settings)
+		internal ClusterService([NotNull] ClusterSettings settings, IServiceBus bus)
 		{
 			_settings = settings;
 

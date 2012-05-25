@@ -1,6 +1,6 @@
-﻿namespace MassTransit.Cluster
+﻿namespace MassTransit.Cluster.Configuration
 {
-	public class ClusterSettings
+	class ClusterSettings
 	{
 		/// <summary>
 		/// The index of the current system in the grid
