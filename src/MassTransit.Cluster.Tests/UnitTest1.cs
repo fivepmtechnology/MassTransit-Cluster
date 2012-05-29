@@ -29,6 +29,7 @@ namespace MassTransit.Cluster.Tests
 					cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
 					cc.AddWonCoordinatorHandler(bus => evt1.Set());
 				});
+				sbi.UseControlBus();
 				sbi.UseNLog();
 			});
 
@@ -43,6 +44,7 @@ namespace MassTransit.Cluster.Tests
 					cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
 					cc.AddWonCoordinatorHandler(bus => evt2.Set());
 				});
+				sbi.UseControlBus();
 				sbi.UseNLog();
 			});
 
