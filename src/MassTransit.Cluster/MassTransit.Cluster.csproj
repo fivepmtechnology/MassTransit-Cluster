@@ -56,6 +56,7 @@
     <Compile Include="ClusterService.cs" />
     <Compile Include="Configuration\ClusterSettings.cs" />
     <Compile Include="Configuration\IClusterConfigurator.cs" />
+    <Compile Include="Messages\Heartbeat.cs" />
     <Compile Include="Messages\IClusterMessage.cs" />
     <Compile Include="Messages\Election.cs" />
     <Compile Include="Messages\Okay.cs" />

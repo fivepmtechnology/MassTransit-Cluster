@@ -36,5 +36,25 @@ namespace MassTransit.Cluster.Configuration
 		{
 			get { return BusServiceLayer.Session; }
 		}
+
+		public void SetEndpointIndex(uint index)
+		{
+			_settings.EndpointIndex = index;
+		}
+
+		public void SetEndpointCount(uint count)
+		{
+			_settings.EndpointCount = count;
+		}
+
+		public void SetElectionPeriod(TimeSpan period)
+		{
+			_settings.ElectionPeriod = period;
+		}
+
+		public void SetHeartbeatInterval(TimeSpan interval)
+		{
+			_settings.HeartbeatInterval = interval;
+		}
 	}
 }

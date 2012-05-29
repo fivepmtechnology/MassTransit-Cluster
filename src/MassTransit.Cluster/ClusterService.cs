@@ -2,31 +2,54 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using MassTransit.Cluster.Configuration;
 using MassTransit.Cluster.Messages;
 using MassTransit.Util;
 
 namespace MassTransit.Cluster
 {
-	class ClusterService : IBusService, Consumes<Election>.Selected, Consumes<Okay>.Selected, Consumes<Win>.Selected
+	class ClusterService : IBusService, Consumes<Election>.Selected, Consumes<Okay>.Selected, Consumes<Win>.All, Consumes<Heartbeat>.Selected
 	{
 		private readonly ClusterSettings _settings;
 		private readonly IServiceBus _bus;
-		private uint _master;
+		private uint _coordinatorIndex;
+		private readonly Timer _winnerTimer; // during an election -- wait for us to be the winner
+		private readonly Timer _electionTimer; // during an idle period -- wait for no heartbeat, then run election
 
 		internal ClusterService([NotNull] ClusterSettings settings, IServiceBus bus)
 		{
 			_settings = settings;
 			_bus = bus;
+
+			_winnerTimer = new Timer(_ => Winner());
+			_electionTimer = new Timer(_ => Election());
 		}
 
 		private void Election()
 		{
+			_electionTimer.Change(Timeout.Infinite, Timeout.Infinite);
+
 			// run an election
 			// send an election notice to all systems with a higher id
 			var message = new Election {SourceIndex = _settings.EndpointIndex};
 			_bus.Publish(message);
+
+			// set a timer; if no one responds with "okay" before it elapses, we're the winner
+			_winnerTimer.Change(_settings.ElectionPeriod, TimeSpan.FromMilliseconds(-1));
 		}
+
+		private void Winner()
+		{
+			// we won -- tell everyone!
+			var message = new Win {SourceIndex = _settings.EndpointIndex};
+			_bus.Publish(message);
+		}
+
+		/// <summary>
+		/// Whether or not this endpoint is the coordinator for the cluster
+		/// </summary>
+		public bool IsCoordinator { get { return _coordinatorIndex == _settings.EndpointIndex; } }
 
 		public void Consume(Election message)
 		{
@@ -43,7 +66,12 @@ namespace MassTransit.Cluster
 
 		public void Consume(Okay message)
 		{
-			_master = Math.Max(message.SourceIndex, _master);
+			// disable the timer, we're not the winner
+			_winnerTimer.Change(Timeout.Infinite, Timeout.Infinite);
+
+			// insist on heartbeats by waiting for 2*heartbeat rate for a heartbeat and holding an election otherwise
+			var heartbeatWaitRate = new TimeSpan(_settings.HeartbeatInterval.Ticks*2);
+			_electionTimer.Change(heartbeatWaitRate, TimeSpan.FromMilliseconds(-1));
 		}
 
 		public bool Accept(Okay message)
@@ -54,19 +82,19 @@ namespace MassTransit.Cluster
 
 		public void Consume(Win message)
 		{
-			_master = Math.Max(message.SourceIndex, _master);
+			if(message.SourceIndex > _settings.EndpointIndex)
+			{
+				// someone higher has claimed coordinator
+				_coordinatorIndex = message.SourceIndex;
+			}
+			else if (message.SourceIndex < _settings.EndpointIndex)
+			{
+				// this shouldn't happen since we're alive! -- so let's hold a new election
+				Election();
+			}
 		}
 
-		public bool Accept(Win message)
-		{
-			// only allow higher endpoints to "win" the leader
-			return message.SourceIndex > _settings.EndpointIndex;
-		}
-
-		/// <summary>
-		/// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
-		/// </summary>
-		public void Dispose()
+		void IDisposable.Dispose()
 		{
 			// no-op
 		}
@@ -77,7 +105,7 @@ namespace MassTransit.Cluster
 		/// <param name="bus">The service bus</param>
 		public void Start(IServiceBus bus)
 		{
-			throw new NotImplementedException();
+			Election();
 		}
 
 		/// <summary>
@@ -85,7 +113,19 @@ namespace MassTransit.Cluster
 		/// </summary>
 		public void Stop()
 		{
-			throw new NotImplementedException();
+			
+		}
+
+		public void Consume(Heartbeat message)
+		{
+			// but insist on heartbeats by waiting for 2*heartbeat rate for a heartbeat and holding an election otherwise
+			var heartbeatWaitRate = new TimeSpan(_settings.HeartbeatInterval.Ticks * 2);
+			_electionTimer.Change(heartbeatWaitRate, TimeSpan.FromMilliseconds(-1));
+		}
+
+		public bool Accept(Heartbeat message)
+		{
+			return message.SourceIndex == _coordinatorIndex;
 		}
 	}
 }
