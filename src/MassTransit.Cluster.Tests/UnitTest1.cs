@@ -46,7 +46,8 @@ namespace MassTransit.Cluster.Tests
 				sbi.UseNLog();
 			});
 
-			WaitHandle.WaitAny(new[] { evt1.WaitHandle, evt2.WaitHandle }, TimeSpan.FromSeconds(30));
+			var result = WaitHandle.WaitAny(new[] { evt1.WaitHandle, evt2.WaitHandle }, TimeSpan.FromSeconds(30));
+			Assert.IsTrue(result == 1, "Endpoint {0} is not highest endpoint but was elected leader anyway", result+1);
 		}
 	}
 }

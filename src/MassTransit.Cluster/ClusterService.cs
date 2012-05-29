@@ -10,7 +10,7 @@ using MassTransit.Util;
 
 namespace MassTransit.Cluster
 {
-	class ClusterService : IBusService, Consumes<Election>.Selected, Consumes<Okay>.Selected, Consumes<Win>.All, Consumes<Heartbeat>.Selected
+	class ClusterService : IBusService, Consumes<Election>.All, Consumes<Okay>.All, Consumes<Win>.All, Consumes<Heartbeat>.All
 	{
 		private readonly ClusterSettings _settings;
 		private readonly IServiceBus _bus;
@@ -61,31 +61,25 @@ namespace MassTransit.Cluster
 
 		public void Consume(Election message)
 		{
+			if (message.SourceIndex >= _settings.EndpointIndex)
+				return;
+
 			// respond to election message with okay
 			var response = new Okay {SourceIndex = _settings.EndpointIndex};
 			_bus.Publish(response);
 		}
-		
-		public bool Accept(Election message)
-		{
-			// only allow lower endpoints to request an election
-			return message.SourceIndex < _settings.EndpointIndex;
-		}
 
 		public void Consume(Okay message)
 		{
+			if (message.SourceIndex <= _settings.EndpointIndex)
+				return;
+
 			// disable the timer, we're not the winner
 			_winnerTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
 			// insist on heartbeats by waiting for 2*heartbeat rate for a heartbeat and holding an election otherwise
 			var heartbeatWaitRate = new TimeSpan(_settings.HeartbeatInterval.Ticks*2);
 			_electionTimer.Change(heartbeatWaitRate, TimeSpan.FromMilliseconds(-1));
-		}
-
-		public bool Accept(Okay message)
-		{
-			// only listen to higher endpoints telling us they're okay
-			return message.SourceIndex > _settings.EndpointIndex;
 		}
 
 		public void Consume(Win message)
@@ -128,14 +122,12 @@ namespace MassTransit.Cluster
 
 		public void Consume(Heartbeat message)
 		{
+			if (message.SourceIndex != _coordinatorIndex)
+				return;
+
 			// but insist on heartbeats by waiting for 2*heartbeat rate for a heartbeat and holding an election otherwise
 			var heartbeatWaitRate = new TimeSpan(_settings.HeartbeatInterval.Ticks * 2);
 			_electionTimer.Change(heartbeatWaitRate, TimeSpan.FromMilliseconds(-1));
-		}
-
-		public bool Accept(Heartbeat message)
-		{
-			return message.SourceIndex == _coordinatorIndex;
 		}
 	}
 }
