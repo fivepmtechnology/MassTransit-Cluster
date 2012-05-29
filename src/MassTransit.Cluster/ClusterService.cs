@@ -10,7 +10,7 @@ using MassTransit.Util;
 
 namespace MassTransit.Cluster
 {
-	class ClusterService : IBusService, Consumes<Election>.All, Consumes<Okay>.All, Consumes<Win>.All, Consumes<Heartbeat>.All
+	public class ClusterService : IBusService, Consumes<Election>.All, Consumes<Okay>.All, Consumes<Win>.All, Consumes<Heartbeat>.All
 	{
 		private readonly ClusterSettings _settings;
 		private readonly IServiceBus _bus;
@@ -37,7 +37,7 @@ namespace MassTransit.Cluster
 			// run an election
 			// send an election notice to all systems with a higher id
 			var message = new Election {SourceIndex = _settings.EndpointIndex};
-			_bus.Publish(message);
+			_bus.ControlBus.Publish(message);
 
 			// set a timer; if no one responds with "okay" before it elapses, we're the winner
 			_winnerTimer.Change(_settings.ElectionPeriod, TimeSpan.FromMilliseconds(-1));
@@ -49,7 +49,7 @@ namespace MassTransit.Cluster
 
 			// we won -- tell everyone!
 			var message = new Win {SourceIndex = _settings.EndpointIndex};
-			_bus.Publish(message);
+			_bus.ControlBus.Publish(message);
 
 			lock(_settings) _settings.OnWonCoordinator(_bus);
 		}
@@ -66,7 +66,7 @@ namespace MassTransit.Cluster
 
 			// respond to election message with okay
 			var response = new Okay {SourceIndex = _settings.EndpointIndex};
-			_bus.Publish(response);
+			_bus.ControlBus.Publish(response);
 		}
 
 		public void Consume(Okay message)
