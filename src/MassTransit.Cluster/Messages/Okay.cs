@@ -5,8 +5,8 @@ using System.Text;
 
 namespace MassTransit.Cluster.Messages
 {
-	interface IClusterMessage
+	public class Okay : IClusterMessage
 	{
-		uint SourceIndex { get; }
+		public uint SourceIndex { get; set; }
 	}
 }

@@ -5,11 +5,11 @@
 		/// <summary>
 		/// The index of the current system in the grid
 		/// </summary>
-		public int SystemIndex { get; set; }
+		public uint EndpointIndex { get; set; }
 
 		/// <summary>
 		/// The count of total number of systems initially in the grid
 		/// </summary>
-		public int SystemCount { get; set; }
+		public uint EndpointCount { get; set; }
 	}
 }

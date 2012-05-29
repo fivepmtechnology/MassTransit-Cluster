@@ -3,23 +3,64 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using MassTransit.Cluster.Configuration;
+using MassTransit.Cluster.Messages;
 using MassTransit.Util;
 
 namespace MassTransit.Cluster
 {
-	class ClusterService : IBusService
+	class ClusterService : IBusService, Consumes<Election>.Selected, Consumes<Okay>.Selected, Consumes<Win>.Selected
 	{
 		private readonly ClusterSettings _settings;
 		private readonly IServiceBus _bus;
-		private readonly List<uint> _clock;
+		private uint _master;
 
 		internal ClusterService([NotNull] ClusterSettings settings, IServiceBus bus)
 		{
 			_settings = settings;
 			_bus = bus;
+		}
 
-			_clock = new List<uint>(_settings.SystemCount);
-			_clock.AddRange(Enumerable.Repeat(0u, _settings.SystemCount));
+		private void Election()
+		{
+			// run an election
+			// send an election notice to all systems with a higher id
+			var message = new Election {SourceIndex = _settings.EndpointIndex};
+			_bus.Publish(message);
+		}
+
+		public void Consume(Election message)
+		{
+			// respond to election message with okay
+			var response = new Okay {SourceIndex = _settings.EndpointIndex};
+			_bus.Publish(response);
+		}
+		
+		public bool Accept(Election message)
+		{
+			// only allow lower endpoints to request an election
+			return message.SourceIndex < _settings.EndpointIndex;
+		}
+
+		public void Consume(Okay message)
+		{
+			_master = Math.Max(message.SourceIndex, _master);
+		}
+
+		public bool Accept(Okay message)
+		{
+			// only listen to higher endpoints telling us they're okay
+			return message.SourceIndex > _settings.EndpointIndex;
+		}
+
+		public void Consume(Win message)
+		{
+			_master = Math.Max(message.SourceIndex, _master);
+		}
+
+		public bool Accept(Win message)
+		{
+			// only allow higher endpoints to "win" the leader
+			return message.SourceIndex > _settings.EndpointIndex;
 		}
 
 		/// <summary>
