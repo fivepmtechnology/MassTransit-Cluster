@@ -20,7 +20,6 @@ namespace MassTransit.Cluster.Configuration
 		public IBusService Create(IServiceBus bus)
 		{
 			var service = new ClusterService(_settings, bus);
-			bus.SubscribeInstance(service);
 			return service;
 		}
 

@@ -109,6 +109,7 @@ namespace MassTransit.Cluster
 		/// <param name="bus">The service bus</param>
 		public void Start(IServiceBus bus)
 		{
+			bus.SubscribeInstance(this);			
 			Election();
 		}
 
