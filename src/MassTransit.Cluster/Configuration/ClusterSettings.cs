@@ -29,5 +29,19 @@ namespace MassTransit.Cluster.Configuration
 		/// The length of time between heartbeats
 		/// </summary>
 		public TimeSpan HeartbeatInterval { get; set; }
+
+		public event Action<IServiceBus> WonCoordinator;
+		public void OnWonCoordinator(IServiceBus bus)
+		{
+			Action<IServiceBus> handler = WonCoordinator;
+			if (handler != null) handler(bus);
+		}
+
+		public event Action LostCoordinator;
+		public void OnLostCoordinator()
+		{
+			Action handler = LostCoordinator;
+			if (handler != null) handler();
+		}
 	}
 }

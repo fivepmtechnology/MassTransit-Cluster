@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using MassTransit.Cluster.Configuration;
 using MassTransit.Cluster.Messages;
+using MassTransit.Logging;
 using MassTransit.Util;
 
 namespace MassTransit.Cluster
@@ -16,6 +17,7 @@ namespace MassTransit.Cluster
 		private uint _coordinatorIndex;
 		private readonly Timer _winnerTimer; // during an election -- wait for us to be the winner
 		private readonly Timer _electionTimer; // during an idle period -- wait for no heartbeat, then run election
+		private readonly ILog _log = Logger.Get(typeof(ClusterService));
 
 		internal ClusterService([NotNull] ClusterSettings settings, IServiceBus bus)
 		{
@@ -28,6 +30,8 @@ namespace MassTransit.Cluster
 
 		private void Election()
 		{
+			_log.Info("Holding a new election");
+
 			_electionTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
 			// run an election
@@ -41,9 +45,13 @@ namespace MassTransit.Cluster
 
 		private void Winner()
 		{
+			_log.Info("Won the election");
+
 			// we won -- tell everyone!
 			var message = new Win {SourceIndex = _settings.EndpointIndex};
 			_bus.Publish(message);
+
+			lock(_settings) _settings.OnWonCoordinator(_bus);
 		}
 
 		/// <summary>
@@ -86,6 +94,8 @@ namespace MassTransit.Cluster
 			{
 				// someone higher has claimed coordinator
 				_coordinatorIndex = message.SourceIndex;
+
+				lock (_settings) _settings.OnLostCoordinator();
 			}
 			else if (message.SourceIndex < _settings.EndpointIndex)
 			{
