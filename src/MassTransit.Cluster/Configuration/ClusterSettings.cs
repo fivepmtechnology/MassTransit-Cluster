@@ -6,7 +6,7 @@ namespace MassTransit.Cluster.Configuration
 	{
 		public ClusterSettings()
 		{
-			ElectionPeriod = TimeSpan.FromSeconds(30);
+			ElectionPeriod = TimeSpan.FromSeconds(10);
 			HeartbeatInterval = TimeSpan.FromSeconds(15);
 		}
 

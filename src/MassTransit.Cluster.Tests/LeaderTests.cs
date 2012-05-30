@@ -2,26 +2,25 @@
 using System.Diagnostics;
 using System.Threading;
 using MassTransit.NLogIntegration;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MassTransit.Cluster.Configuration;
 using NLog;
-using NLog.Config;
-using NLog.Targets;
+using NUnit;
+using NUnit.Framework;
 
 namespace MassTransit.Cluster.Tests
 {
-	[TestClass]
+	[TestFixture]
 	public class LeaderTests
 	{
 		private Logger _log;
 
-		[TestInitialize]
+		[TestFixtureSetUp]
 		public void HookupLogging()
 		{
-			//_log = LogManager.GetCurrentClassLogger();			
+			_log = LogManager.GetCurrentClassLogger();			
 		}
 
-		[TestMethod]
+		[Test]
 		public void HighestLeaderElected()
 		{
 			var evt = new ManualResetEventSlim(false);
@@ -55,7 +54,7 @@ namespace MassTransit.Cluster.Tests
 			Assert.IsTrue(result, "Highest endpoint was not elected leader");
 		}
 
-		[TestMethod]
+		[Test]
 		public void LateLeaderShouldBully()
 		{
 			var evt = new ManualResetEventSlim(false);
@@ -110,7 +109,7 @@ namespace MassTransit.Cluster.Tests
 			Assert.IsTrue(result, "Highest endpoint was not elected leader");
 		}
 
-		[TestMethod]
+		[Test]
 		public void LateLowerEndpointShouldNotWin()
 		{
 			var evt = new ManualResetEventSlim(false);
@@ -166,7 +165,7 @@ namespace MassTransit.Cluster.Tests
 			Assert.IsFalse(result, "New endpoint stole the leader");
 		}
 
-		[TestMethod]
+		[Test]
 		public void DeadLeaderShouldBeReplaced()
 		{
 			bool set = false;
