@@ -10,97 +10,145 @@ using MassTransit.Util;
 
 namespace MassTransit.Cluster
 {
-	public class ClusterService : IBusService, Consumes<Election>.All, Consumes<Okay>.All, Consumes<Win>.All, Consumes<Heartbeat>.All
+	public class ClusterService : IBusService, Consumes<Election>.All, Consumes<Answer>.All, Consumes<Leader>.All, Consumes<Heartbeat>.All
 	{
 		private readonly ClusterSettings _settings;
 		private readonly IServiceBus _bus;
-		private uint _coordinatorIndex;
+		private uint? _leaderIndex;
 		private readonly Timer _winnerTimer; // during an election -- wait for us to be the winner
 		private readonly Timer _electionTimer; // during an idle period -- wait for no heartbeat, then run election
+		private readonly Timer _heartbeatTimer; // send heartbeats while we're the leader
 		private readonly ILog _log = Logger.Get(typeof(ClusterService));
+
+		private static readonly TimeSpan Infinite = TimeSpan.FromMilliseconds(-1);
 
 		internal ClusterService([NotNull] ClusterSettings settings, IServiceBus bus)
 		{
 			_settings = settings;
-			_bus = bus;
 
-			_winnerTimer = new Timer(_ => Winner());
-			_electionTimer = new Timer(_ => Election());
+			if (bus.ControlBus != null)
+				_bus = bus.ControlBus;
+			else
+				_bus = bus;
+
+			_winnerTimer = new Timer(_ => DeclareWinner());
+			_electionTimer = new Timer(_ => HoldElection());
+			_heartbeatTimer = new Timer(_ => SendHeartbeat());
 		}
 
-		private void Election()
+		private readonly Random _random = new Random();
+
+		private void HoldElection(bool initial = false)
 		{
-			_log.Info("Holding a new election");
+			// "P broadcasts an election message (inquiry) to all other processes with higher process IDs."
 
-			_electionTimer.Change(Timeout.Infinite, Timeout.Infinite);
+			_log.InfoFormat("#{0} is holding {1} election", _settings.EndpointIndex, initial ? "its initial" : "a new");
 
-			// run an election
+			_electionTimer.Stop();
+
 			// send an election notice to all systems with a higher id
-			var message = new Election {SourceIndex = _settings.EndpointIndex};
+			var message = new Election { SourceIndex = _settings.EndpointIndex };
 			_bus.Publish(message);
 
 			// set a timer; if no one responds with "okay" before it elapses, we're the winner
-			_winnerTimer.Change(_settings.ElectionPeriod, TimeSpan.FromMilliseconds(-1));
+			_winnerTimer.Change(_settings.ElectionPeriod, null);
+
+			// clear current leader
+			_leaderIndex = null;
 		}
 
-		private void Winner()
+		private void DeclareWinner()
 		{
-			_log.Info("Won the election");
+			// "If P hears from no process with a higher process ID than it, it wins the election and broadcasts victory."
 
-			// we won -- tell everyone!
-			var message = new Win {SourceIndex = _settings.EndpointIndex};
+			_log.InfoFormat("#{0} won the election", _settings.EndpointIndex);
+
+			_leaderIndex = _settings.EndpointIndex; // win the election
+
+			var message = new Leader { SourceIndex = _settings.EndpointIndex };
+			_bus.Publish(message); // broadcast victory
+
+			// start heartbeating
+			_heartbeatTimer.Change(TimeSpan.Zero, _settings.HeartbeatInterval);
+
+			lock (_settings) _settings.OnWonCoordinator(_bus);
+		}
+
+		private void DeclareLoser()
+		{
+			// "If P hears from a process with a higher ID, P waits a certain amount of time for that process to broadcast itself as the leader.
+			// If it does not receive this message in time, it re-broadcasts the election message."
+
+			_log.InfoFormat("#{0} lost the election", _settings.EndpointIndex);
+
+			// we lost, so we can't win anymore
+			_winnerTimer.Stop();
+
+			// insist on heartbeats by waiting for 2*heartbeat rate for a heartbeat, holding an election if no reply
+			var heartbeatWaitRate = new TimeSpan(_settings.HeartbeatInterval.Ticks * 2) + TimeSpan.FromSeconds(_random.NextDouble() * 4.0 - 2.0);
+			_electionTimer.Change(heartbeatWaitRate, Infinite);
+		}
+
+		private void SendHeartbeat()
+		{
+            _log.DebugFormat("#{0} sends a heartbeat", _settings.EndpointIndex);
+			var message = new Leader {SourceIndex = _settings.EndpointIndex};
 			_bus.Publish(message);
-
-			lock(_settings) _settings.OnWonCoordinator(_bus);
 		}
 
 		/// <summary>
 		/// Whether or not this endpoint is the coordinator for the cluster
 		/// </summary>
-		public bool IsCoordinator { get { return _coordinatorIndex == _settings.EndpointIndex; } }
+		public bool IsLeader { get { return _leaderIndex == _settings.EndpointIndex; } }
 
 		public void Consume(Election message)
 		{
+			// "If P gets an election message (inquiry) from another process with a lower ID it sends an 'I am alive' message back and starts new elections."
+
 			if (message.SourceIndex >= _settings.EndpointIndex)
 				return;
 
-			// respond to election message with okay
-			var response = new Okay {SourceIndex = _settings.EndpointIndex};
-			_bus.Publish(response);
+			_log.InfoFormat("#{1} sees election requested by endpoint #{0}", message.SourceIndex, _settings.EndpointIndex);
+
+			var response = new Answer { SourceIndex = _settings.EndpointIndex };
+			_bus.Publish(response); // sends "I am alive"
+
+			HoldElection(); // starts new elections
 		}
 
-		public void Consume(Okay message)
+		public void Consume(Answer message)
 		{
 			if (message.SourceIndex <= _settings.EndpointIndex)
 				return;
 
-			// disable the timer, we're not the winner
-			_winnerTimer.Change(Timeout.Infinite, Timeout.Infinite);
+			if (_leaderIndex != null)
+				return; // we're not waiting for a response
 
-			// insist on heartbeats by waiting for 2*heartbeat rate for a heartbeat and holding an election otherwise
-			var heartbeatWaitRate = new TimeSpan(_settings.HeartbeatInterval.Ticks*2);
-			_electionTimer.Change(heartbeatWaitRate, TimeSpan.FromMilliseconds(-1));
+			DeclareLoser();
 		}
 
-		public void Consume(Win message)
+		public void Consume(Leader message)
 		{
-			if(message.SourceIndex > _settings.EndpointIndex)
+			if (message.SourceIndex > _settings.EndpointIndex)
 			{
-				// someone higher has claimed coordinator
-				_coordinatorIndex = message.SourceIndex;
+				_log.InfoFormat("#{1} sees #{0} won the election", message.SourceIndex, _settings.EndpointIndex);
+
+				_leaderIndex = message.SourceIndex;
+
+				DeclareLoser();
 
 				lock (_settings) _settings.OnLostCoordinator();
 			}
 			else if (message.SourceIndex < _settings.EndpointIndex)
 			{
-				// this shouldn't happen since we're alive! -- so let's hold a new election
-				Election();
+				// "Note that if P receives a victory message from a process with a lower ID number, it immediately initiates a new election."
+				HoldElection();
 			}
 		}
 
 		void IDisposable.Dispose()
 		{
-			// no-op
+			Stop();
 		}
 
 		/// <summary>
@@ -109,8 +157,9 @@ namespace MassTransit.Cluster
 		/// <param name="bus">The service bus</param>
 		public void Start(IServiceBus bus)
 		{
-			bus.SubscribeInstance(this);			
-			Election();
+			bus.SubscribeInstance(this);
+
+			HoldElection(true);
 		}
 
 		/// <summary>
@@ -118,17 +167,14 @@ namespace MassTransit.Cluster
 		/// </summary>
 		public void Stop()
 		{
-			
+			_electionTimer.Stop();
+			_winnerTimer.Stop();
+			_heartbeatTimer.Stop();
 		}
 
 		public void Consume(Heartbeat message)
 		{
-			if (message.SourceIndex != _coordinatorIndex)
-				return;
-
-			// but insist on heartbeats by waiting for 2*heartbeat rate for a heartbeat and holding an election otherwise
-			var heartbeatWaitRate = new TimeSpan(_settings.HeartbeatInterval.Ticks * 2);
-			_electionTimer.Change(heartbeatWaitRate, TimeSpan.FromMilliseconds(-1));
+			throw new NotImplementedException();
 		}
 	}
 }

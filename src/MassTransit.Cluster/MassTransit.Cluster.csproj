@@ -63,9 +63,10 @@
     <Compile Include="Messages\Heartbeat.cs" />
     <Compile Include="Messages\IClusterMessage.cs" />
     <Compile Include="Messages\Election.cs" />
-    <Compile Include="Messages\Okay.cs" />
-    <Compile Include="Messages\Win.cs" />
+    <Compile Include="Messages\Answer.cs" />
+    <Compile Include="Messages\Leader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TimerExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace MassTransit.Cluster.Messages
 {
-	public class Okay : IClusterMessage
+	public class Leader : IClusterMessage
 	{
 		public uint SourceIndex { get; set; }
 	}

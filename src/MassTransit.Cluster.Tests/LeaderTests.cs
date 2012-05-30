@@ -13,6 +13,14 @@ namespace MassTransit.Cluster.Tests
 	[TestClass]
 	public class LeaderTests
 	{
+		private Logger _log;
+
+		[TestInitialize]
+		public void HookupLogging()
+		{
+			//_log = LogManager.GetCurrentClassLogger();			
+		}
+
 		[TestMethod]
 		public void HighestLeaderElected()
 		{
@@ -33,7 +41,7 @@ namespace MassTransit.Cluster.Tests
 						cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
 						cc.AddWonCoordinatorHandler(b =>
 						{
-							Debug.WriteLine("#{0} elected as leader", idx);
+							//_log.Info("#{0} elected as leader", idx);
 							if(idx == count-1)
 								evt.Set();
 						});
@@ -58,25 +66,28 @@ namespace MassTransit.Cluster.Tests
 				uint idx = i;
 				var bus = ServiceBusFactory.New(sbi =>
 				{
+					_log.Info("Configuring #{0}", idx);
 					sbi.UseMsmq();
 					sbi.UseMulticastSubscriptionClient();
-					sbi.ReceiveFrom("msmq://localhost/clustertest-" + idx.ToString());
+					sbi.ReceiveFrom("msmq://localhost/clustertest-" + idx);
 					sbi.UseClusterService(cc =>
 					{
 						cc.SetEndpointIndex(idx);
 						cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
 						cc.AddWonCoordinatorHandler(b =>
 						{
-							Debug.WriteLine("#{0} elected as leader", idx);
+							_log.Info("#{0} elected as leader", idx);
 						});
 					});
-					sbi.EnableMessageTracing();
 					sbi.UseNLog();
 				});
 			}
 
+			_log.Info("Waiting for bus to settle");
+
 			Thread.Sleep(20);
 
+			_log.Info("Introducing new hopeful leader #{0}", count);
 			var newbus = ServiceBusFactory.New(sbi =>
 			{
 				sbi.UseMsmq();
@@ -84,15 +95,14 @@ namespace MassTransit.Cluster.Tests
 				sbi.ReceiveFrom("msmq://localhost/clustertest-" + count);
 				sbi.UseClusterService(cc =>
 				{
-					cc.SetEndpointIndex(1);
+					cc.SetEndpointIndex(count);
 					cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
 					cc.AddWonCoordinatorHandler(b =>
 					{
-						Debug.WriteLine("#{0} elected as leader", count);
+						_log.Info("#{0} elected as leader", count);
 						evt.Set();
 					});
 				});
-				sbi.EnableMessageTracing();
 				sbi.UseNLog();
 			});
 
@@ -123,7 +133,7 @@ namespace MassTransit.Cluster.Tests
 						cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
 						cc.AddWonCoordinatorHandler(b =>
 						{
-							Debug.WriteLine("#{0} elected as leader", idx);
+							_log.Info("#{0} elected as leader", idx);
 						});
 					});
 					sbi.EnableMessageTracing();
@@ -144,7 +154,7 @@ namespace MassTransit.Cluster.Tests
 					cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
 					cc.AddWonCoordinatorHandler(b =>
 					{
-						Debug.WriteLine("#{0} elected as leader", 4);
+						_log.Info("#{0} elected as leader", 4);
 						evt.Set();
 					});
 				});
@@ -154,6 +164,65 @@ namespace MassTransit.Cluster.Tests
 
 			var result = evt.Wait(TimeSpan.FromSeconds(30));
 			Assert.IsFalse(result, "New endpoint stole the leader");
+		}
+
+		[TestMethod]
+		public void DeadLeaderShouldBeReplaced()
+		{
+			bool set = false;
+			var evt = new ManualResetEventSlim(false);
+
+			const uint count = 5;
+			for (uint i = 0; i < count; i++)
+			{
+				uint idx = i;
+				var bus = ServiceBusFactory.New(sbi =>
+				{
+					sbi.UseMsmq();
+					sbi.UseMulticastSubscriptionClient();
+					sbi.ReceiveFrom("msmq://localhost/clustertest-" + idx.ToString());
+					sbi.UseClusterService(cc =>
+					{
+						cc.SetEndpointIndex(idx);
+						cc.SetElectionPeriod(TimeSpan.FromSeconds(5));
+						cc.SetHeartbeatInterval(TimeSpan.FromSeconds(10));
+						cc.AddWonCoordinatorHandler(b =>
+						{
+							_log.Info("#{0} elected as leader", idx);
+							if(idx == count - 1 && set)
+								evt.Set();
+						});
+					});
+					sbi.EnableMessageTracing();
+					sbi.UseNLog();
+				});
+			}
+
+			var newbus = ServiceBusFactory.New(sbi =>
+			{
+				sbi.UseMsmq();
+				sbi.UseMulticastSubscriptionClient();
+				sbi.ReceiveFrom("msmq://localhost/clustertest-" + count);
+				sbi.UseClusterService(cc =>
+				{
+					cc.SetEndpointIndex(count);
+					cc.SetElectionPeriod(TimeSpan.FromSeconds(5));
+					cc.SetHeartbeatInterval(TimeSpan.FromSeconds(10));
+					cc.AddWonCoordinatorHandler(b =>
+					{
+						_log.Info("#{0} elected as leader", count);
+					});
+				});
+				sbi.EnableMessageTracing();
+				sbi.UseNLog();
+			});
+
+			Thread.Sleep(10);
+
+			newbus.Dispose();
+
+			var result = evt.Wait(TimeSpan.FromSeconds(60));
+			Assert.IsTrue(result, "Highest remaining endpoint did not become elected leader");
 		}
 	}
 }
