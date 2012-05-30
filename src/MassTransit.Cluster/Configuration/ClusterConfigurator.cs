@@ -41,11 +41,6 @@ namespace MassTransit.Cluster.Configuration
 			_settings.EndpointIndex = index;
 		}
 
-		public void SetEndpointCount(uint count)
-		{
-			_settings.EndpointCount = count;
-		}
-
 		public void SetElectionPeriod(TimeSpan period)
 		{
 			_settings.ElectionPeriod = period;

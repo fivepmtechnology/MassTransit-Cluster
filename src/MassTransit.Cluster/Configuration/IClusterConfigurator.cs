@@ -8,7 +8,6 @@ namespace MassTransit.Cluster.Configuration
 	public interface IClusterConfigurator
 	{
 		void SetEndpointIndex(uint index);
-		void SetEndpointCount(uint count);
 		void SetHeartbeatInterval(TimeSpan interval);
 		void SetElectionPeriod(TimeSpan period);
 		void AddWonCoordinatorHandler(Action<IServiceBus> handler);
