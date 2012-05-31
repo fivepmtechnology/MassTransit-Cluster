@@ -61,9 +61,9 @@ namespace MassTransit.Cluster
 		public void Consume(Leader message)
 		{
 			if(message.SourceIndex < _settings.EndpointIndex)
-				RaiseEvent(BadLeaderAnnounced);
+				RaiseEvent(BadLeaderAnnounced, message.SourceIndex);
 			else if(message.SourceIndex > _settings.EndpointIndex)
-				RaiseEvent(LeaderAnnounced, message);
+				RaiseEvent(LeaderAnnounced, message.SourceIndex);
 		}
 
 		public void Consume(Heartbeat message)
@@ -114,7 +114,7 @@ namespace MassTransit.Cluster
 		public static Event AnswerReceived { get; set; }
 		public static Event SendHeartbeat { get; set; }
 		public static Event HeartbeatReceived { get; set; }
-		public static Event<Leader> LeaderAnnounced { get; set; }
+		public static Event<uint> LeaderAnnounced { get; set; }
 		public static Event BadLeaderAnnounced { get; set; }
 		public static Event TimerElapsed { get; set; }
 		public static Event StopRequested { get; set; }
@@ -192,18 +192,18 @@ namespace MassTransit.Cluster
 					.TransitionTo(WaitingForLeader),
 
 					When(LeaderAnnounced)
-					.Then((workflow, message) =>
+					.Then((workflow, index) =>
 					{
 						// "If P gets an election message (inquiry) from another process with a lower ID it sends an 'I am alive' message back and starts new elections."
-						workflow._log.InfoFormat("#{1} sees #{0} won the election", message.SourceIndex, workflow.Settings.EndpointIndex);
-						workflow.LeaderIndex = message.SourceIndex;
+						workflow._log.InfoFormat("#{1} sees #{0} won the election", index, workflow.Settings.EndpointIndex);
+						workflow.LeaderIndex = index;
 					})
 					.TransitionTo(Idle),
 
 					When(BadLeaderAnnounced)
-					.Then(workflow =>
+					.Then((workflow, index) =>
 					{
-						workflow._log.InfoFormat("#{0} sees an incorrect claim to have won", workflow.Settings.EndpointIndex);
+						workflow._log.InfoFormat("#{0} sees an incorrect claim from #{1} to have won", workflow.Settings.EndpointIndex, index);
 
 						// "Note that if P receives a victory message from a process with a lower ID number, it immediately initiates a new election."
 						workflow.HoldElection();
@@ -223,12 +223,12 @@ namespace MassTransit.Cluster
 
 				During(WaitingForLeader,
 					When(LeaderAnnounced)
-					.Then((workflow, message) =>
+					.Then((workflow, index) =>
 					{
-						workflow._log.InfoFormat("#{1} sees #{0} won the election", message.SourceIndex, workflow.Settings.EndpointIndex);
+						workflow._log.InfoFormat("#{1} sees #{0} won the election", index, workflow.Settings.EndpointIndex);
 
 						// save the announced leader index
-						workflow.LeaderIndex = message.SourceIndex;
+						workflow.LeaderIndex = index;
 					})
 					.TransitionTo(Idle),
 
