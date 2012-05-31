@@ -197,6 +197,9 @@ namespace MassTransit.Cluster
 						// "If P gets an election message (inquiry) from another process with a lower ID it sends an 'I am alive' message back and starts new elections."
 						workflow._log.InfoFormat("#{1} sees #{0} won the election", index, workflow.Settings.EndpointIndex);
 						workflow.LeaderIndex = index;
+
+                        var doubleInterval = new TimeSpan(workflow.Settings.HeartbeatInterval.Ticks * 2);
+                        workflow._timer.Change(doubleInterval);
 					})
 					.TransitionTo(Idle),
 
@@ -235,7 +238,9 @@ namespace MassTransit.Cluster
 					When(TimerElapsed)
 					.Then(workflow =>
 					{
-						workflow.HoldElection();
+						workflow._log.InfoFormat("#{0} got no leader", workflow.Settings.EndpointIndex);
+                        
+                        workflow.HoldElection();
 					})
 					.TransitionTo(Election),
 
@@ -264,7 +269,9 @@ namespace MassTransit.Cluster
 					When(ElectionReceived)
 					.Then(workflow =>
 					{
-						var response = new Answer { SourceIndex = workflow.Settings.EndpointIndex };
+                        workflow._log.InfoFormat("#{0} got an election request", workflow.Settings.EndpointIndex);						
+                        
+                        var response = new Answer { SourceIndex = workflow.Settings.EndpointIndex };
 						workflow._bus.Publish(response); // sends "I am alive" reply
 
 						workflow.HoldElection();
@@ -289,6 +296,8 @@ namespace MassTransit.Cluster
 					When(TimerElapsed) // no heartbeat
 					.Then(workflow =>
 					{
+                        workflow._log.InfoFormat("#{0} did not get leader heartbeat", workflow.Settings.EndpointIndex);
+
 						workflow.HoldElection();
 					})
 					.TransitionTo(Election),

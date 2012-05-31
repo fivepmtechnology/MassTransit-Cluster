@@ -42,7 +42,7 @@ namespace MassTransit.Cluster.Tests
 						cc.AddWonCoordinatorHandler(b =>
 						{
 							//_log.Info("#{0} elected as leader", idx);
-							if(idx == count-1)
+							if(idx == count)
 								evt.Set();
 						});
 					});
