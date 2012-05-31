@@ -15,6 +15,11 @@ namespace MassTransit.Cluster
 			return timer.Change(dueTime ?? Infinite, interval ?? Infinite);
 		}
 
+		public static bool Change(this Timer timer, TimeSpan? interval)
+		{
+			return timer.Change(interval ?? Infinite, interval ?? Infinite);
+		}
+
 		public static bool Stop(this Timer timer)
 		{
 			return timer.Change(Infinite, Infinite);

@@ -13,11 +13,12 @@ namespace MassTransit.Cluster.Tests
 	public class LeaderTests
 	{
 		private Logger _log;
+		private readonly LogFactory _logFactory = new LogFactory();
 
 		[TestFixtureSetUp]
 		public void HookupLogging()
 		{
-			_log = LogManager.GetCurrentClassLogger();			
+			_log = _logFactory.GetCurrentClassLogger();			
 		}
 
 		[Test]
@@ -26,7 +27,7 @@ namespace MassTransit.Cluster.Tests
 			var evt = new ManualResetEventSlim(false);
 
 			const uint count = 5;
-			for (uint i = 0; i < count; i++)
+			for (uint i = count; i > 0; i--)
 			{
 				uint idx = i;
 				var bus = ServiceBusFactory.New(sbi =>
@@ -46,7 +47,7 @@ namespace MassTransit.Cluster.Tests
 						});
 					});
 					sbi.EnableMessageTracing();
-					sbi.UseNLog();
+					sbi.UseNLog(_logFactory);
 				});
 			}
 
@@ -78,7 +79,7 @@ namespace MassTransit.Cluster.Tests
 							_log.Info("#{0} elected as leader", idx);
 						});
 					});
-					sbi.UseNLog();
+					sbi.UseNLog(_logFactory);
 				});
 			}
 
@@ -102,7 +103,7 @@ namespace MassTransit.Cluster.Tests
 						evt.Set();
 					});
 				});
-				sbi.UseNLog();
+				sbi.UseNLog(_logFactory);
 			});
 
 			var result = evt.Wait(TimeSpan.FromSeconds(30));
@@ -136,7 +137,7 @@ namespace MassTransit.Cluster.Tests
 						});
 					});
 					sbi.EnableMessageTracing();
-					sbi.UseNLog();
+					sbi.UseNLog(_logFactory);
 				});
 			}
 
@@ -158,7 +159,7 @@ namespace MassTransit.Cluster.Tests
 					});
 				});
 				sbi.EnableMessageTracing();
-				sbi.UseNLog();
+				sbi.UseNLog(_logFactory);
 			});
 
 			var result = evt.Wait(TimeSpan.FromSeconds(30));
@@ -193,7 +194,7 @@ namespace MassTransit.Cluster.Tests
 						});
 					});
 					sbi.EnableMessageTracing();
-					sbi.UseNLog();
+					sbi.UseNLog(_logFactory);
 				});
 			}
 
@@ -213,7 +214,7 @@ namespace MassTransit.Cluster.Tests
 					});
 				});
 				sbi.EnableMessageTracing();
-				sbi.UseNLog();
+				sbi.UseNLog(_logFactory);
 			});
 
 			Thread.Sleep(10);
