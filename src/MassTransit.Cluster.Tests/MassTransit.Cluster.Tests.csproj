@@ -34,9 +34,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Magnum">
-      <HintPath>..\..\packages\Magnum.2.0.0.4\lib\NET40\Magnum.dll</HintPath>
-    </Reference>
     <Reference Include="MassTransit, Version=2.5.2.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\packages\MassTransit.2.5.0-prerelease\lib\net40\MassTransit.dll</HintPath>
