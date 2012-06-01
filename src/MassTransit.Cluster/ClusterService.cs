@@ -281,6 +281,8 @@ namespace MassTransit.Cluster
                         var response = new Answer { SourceIndex = workflow.Settings.EndpointIndex };
                         workflow._bus.Publish(response); // sends "I am alive" reply
 
+                        lock (workflow.Settings) workflow.Settings.OnLostCoordinator();
+
                         workflow.HoldElection();
                     })
                     .TransitionTo(Election),
@@ -289,6 +291,8 @@ namespace MassTransit.Cluster
                     .Then(workflow =>
                     {
                         workflow._log.InfoFormat("#{0} sees an incorrect claim to have won", workflow.Settings.EndpointIndex);
+
+                        lock (workflow.Settings) workflow.Settings.OnLostCoordinator();
 
                         workflow.HoldElection();
                     }),
@@ -300,6 +304,8 @@ namespace MassTransit.Cluster
 
 						// save the announced leader index
 						workflow.LeaderIndex = index;
+
+                        lock (workflow.Settings) workflow.Settings.OnLostCoordinator();
 
 						// wait for heartbeats
 						var doubleInterval = new TimeSpan(workflow.Settings.HeartbeatInterval.Ticks * 2);

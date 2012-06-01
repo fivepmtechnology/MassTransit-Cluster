@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 11
+# Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MassTransit.Cluster", "src\MassTransit.Cluster\MassTransit.Cluster.csproj", "{A512BCB7-9B2A-4118-BB02-6110C2B499F8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{9838BB5C-ECE9-44E4-A242-D433939AE33D}"
