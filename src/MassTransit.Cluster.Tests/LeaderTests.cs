@@ -27,7 +27,7 @@ namespace MassTransit.Cluster.Tests
 			var evt = new ManualResetEventSlim(false);
 
 			const uint count = 5;
-			for (uint i = count; i > 0; i--)
+			for (uint i = 0; i < count; i++)
 			{
 				uint idx = i;
 				var bus = ServiceBusFactory.New(sbi =>
@@ -38,11 +38,11 @@ namespace MassTransit.Cluster.Tests
 					sbi.UseClusterService(cc =>
 					{
 						cc.SetEndpointIndex(idx);
-						cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
+						cc.SetElectionPeriod(TimeSpan.FromSeconds(5));
 						cc.AddWonCoordinatorHandler(b =>
 						{
 							//_log.Info("#{0} elected as leader", idx);
-							if(idx == count)
+							if(idx == count-1)
 								evt.Set();
 						});
 					});
@@ -85,7 +85,7 @@ namespace MassTransit.Cluster.Tests
 
 			_log.Info("Waiting for bus to settle");
 
-			Thread.Sleep(20);
+			Thread.Sleep(20000);
 
 			_log.Info("Introducing new hopeful leader #{0}", count);
 			var newbus = ServiceBusFactory.New(sbi =>
@@ -185,7 +185,7 @@ namespace MassTransit.Cluster.Tests
 					{
 						cc.SetEndpointIndex(idx);
 						cc.SetElectionPeriod(TimeSpan.FromSeconds(5));
-						cc.SetHeartbeatInterval(TimeSpan.FromSeconds(10));
+						cc.SetHeartbeatInterval(TimeSpan.FromSeconds(5));
 						cc.AddWonCoordinatorHandler(b =>
 						{
 							_log.Info("#{0} elected as leader", idx);
@@ -207,7 +207,7 @@ namespace MassTransit.Cluster.Tests
 				{
 					cc.SetEndpointIndex(count);
 					cc.SetElectionPeriod(TimeSpan.FromSeconds(5));
-					cc.SetHeartbeatInterval(TimeSpan.FromSeconds(10));
+					cc.SetHeartbeatInterval(TimeSpan.FromSeconds(5));
 					cc.AddWonCoordinatorHandler(b =>
 					{
 						_log.Info("#{0} elected as leader", count);
@@ -217,7 +217,7 @@ namespace MassTransit.Cluster.Tests
 				sbi.UseNLog(_logFactory);
 			});
 
-			Thread.Sleep(10);
+			Thread.Sleep(10000);
 
 			newbus.Dispose();
 
