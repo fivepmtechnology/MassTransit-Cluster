@@ -43,7 +43,7 @@ namespace MassTransit.Cluster
             if (message.SourceIndex >= _settings.EndpointIndex)
                 return;
 
-            _log.InfoFormat("#{1} sees election from #{0}", message.SourceIndex, _settings.EndpointIndex);
+            // _log.InfoFormat("#{1} sees election from #{0}", message.SourceIndex, _settings.EndpointIndex);
 
             RaiseEvent(ElectionReceived);
         }
@@ -66,6 +66,8 @@ namespace MassTransit.Cluster
 
         public void Consume(Heartbeat message)
         {
+			// _log.DebugFormat("#{0} receives a raw heartbeat message from #{1}", _settings.EndpointIndex, message.SourceIndex);
+
 			if (message.SourceIndex != LeaderIndex)
 				return; // we only want leader heartbeats
 
@@ -267,7 +269,7 @@ namespace MassTransit.Cluster
                     .Then(workflow =>
                     {
                         workflow._log.DebugFormat("#{0} sends a heartbeat", workflow.Settings.EndpointIndex);
-                        var message = new Leader { SourceIndex = workflow.Settings.EndpointIndex };
+                        var message = new Heartbeat { SourceIndex = workflow.Settings.EndpointIndex };
                         workflow._bus.Publish(message);
                     }),
 
@@ -290,6 +292,20 @@ namespace MassTransit.Cluster
 
                         workflow.HoldElection();
                     }),
+
+					When(LeaderAnnounced)
+					.Then((workflow, index) =>
+					{
+						workflow._log.InfoFormat("#{1} sees #{0} won the election", index, workflow.Settings.EndpointIndex);
+
+						// save the announced leader index
+						workflow.LeaderIndex = index;
+
+						// wait for heartbeats
+						var doubleInterval = new TimeSpan(workflow.Settings.HeartbeatInterval.Ticks * 2);
+						workflow._timer.Change(doubleInterval);
+					})
+					.TransitionTo(Idle),
 
                     When(StopRequested)
                         .Complete()
@@ -318,6 +334,8 @@ namespace MassTransit.Cluster
                     When(HeartbeatReceived)
                     .Then(workflow =>
                     {
+						workflow._log.DebugFormat("#{0} sees a heartbeat", workflow.Settings.EndpointIndex);
+
                         var doubleInterval = new TimeSpan(workflow.Settings.HeartbeatInterval.Ticks * 2);
                         workflow._timer.Change(doubleInterval);
                     }),

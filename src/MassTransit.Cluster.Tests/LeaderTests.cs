@@ -217,9 +217,10 @@ namespace MassTransit.Cluster.Tests
 				sbi.UseNLog(_logFactory);
 			});
 
-			Thread.Sleep(10000);
+			Thread.Sleep(20000);
 
 			newbus.Dispose();
+			set = true;
 
 			var result = evt.Wait(TimeSpan.FromSeconds(60));
 			Assert.IsTrue(result, "Highest remaining endpoint did not become elected leader");
