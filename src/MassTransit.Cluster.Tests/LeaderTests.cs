@@ -39,7 +39,7 @@ namespace MassTransit.Cluster.Tests
 					{
 						cc.SetEndpointIndex(idx);
 						cc.SetElectionPeriod(TimeSpan.FromSeconds(5));
-						cc.AddWonCoordinatorHandler(b =>
+						cc.AddPromotionHandler(b =>
 						{
 							//_log.Info("#{0} elected as leader", idx);
 							if(idx == count-1)
@@ -74,7 +74,7 @@ namespace MassTransit.Cluster.Tests
 					{
 						cc.SetEndpointIndex(idx);
 						cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
-						cc.AddWonCoordinatorHandler(b =>
+						cc.AddPromotionHandler(b =>
 						{
 							_log.Info("#{0} elected as leader", idx);
 						});
@@ -97,7 +97,7 @@ namespace MassTransit.Cluster.Tests
 				{
 					cc.SetEndpointIndex(count);
 					cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
-					cc.AddWonCoordinatorHandler(b =>
+					cc.AddPromotionHandler(b =>
 					{
 						_log.Info("#{0} elected as leader", count);
 						evt.Set();
@@ -131,7 +131,7 @@ namespace MassTransit.Cluster.Tests
 						else
 							cc.SetEndpointIndex(idx+1);
 						cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
-						cc.AddWonCoordinatorHandler(b =>
+						cc.AddPromotionHandler(b =>
 						{
 							_log.Info("#{0} elected as leader", idx);
 						});
@@ -152,7 +152,7 @@ namespace MassTransit.Cluster.Tests
 				{
 					cc.SetEndpointIndex(4);
 					cc.SetElectionPeriod(TimeSpan.FromSeconds(15));
-					cc.AddWonCoordinatorHandler(b =>
+					cc.AddPromotionHandler(b =>
 					{
 						_log.Info("#{0} elected as leader", 4);
 						evt.Set();
@@ -186,7 +186,7 @@ namespace MassTransit.Cluster.Tests
 						cc.SetEndpointIndex(idx);
 						cc.SetElectionPeriod(TimeSpan.FromSeconds(5));
 						cc.SetHeartbeatInterval(TimeSpan.FromSeconds(5));
-						cc.AddWonCoordinatorHandler(b =>
+						cc.AddPromotionHandler(b =>
 						{
 							_log.Info("#{0} elected as leader", idx);
 							if(idx == count - 1 && set)
@@ -208,7 +208,7 @@ namespace MassTransit.Cluster.Tests
 					cc.SetEndpointIndex(count);
 					cc.SetElectionPeriod(TimeSpan.FromSeconds(5));
 					cc.SetHeartbeatInterval(TimeSpan.FromSeconds(5));
-					cc.AddWonCoordinatorHandler(b =>
+					cc.AddPromotionHandler(b =>
 					{
 						_log.Info("#{0} elected as leader", count);
 					});

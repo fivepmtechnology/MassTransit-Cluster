@@ -10,7 +10,7 @@ namespace MassTransit.Cluster.Configuration
 		void SetEndpointIndex(uint index);
 		void SetHeartbeatInterval(TimeSpan interval);
 		void SetElectionPeriod(TimeSpan period);
-		void AddWonCoordinatorHandler(Action<IServiceBus> handler);
-		void AddLostCoordinatorHandler(Action handler);
+		void AddPromotionHandler(Action<IServiceBus> handler);
+		void AddDemotionHandler(Action handler);
 	}
 }

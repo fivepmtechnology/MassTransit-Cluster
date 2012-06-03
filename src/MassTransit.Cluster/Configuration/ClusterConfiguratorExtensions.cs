@@ -9,8 +9,6 @@ namespace MassTransit.Cluster.Configuration
 		public static T UseClusterService<T>(this T configurator, Action<IClusterConfigurator> configure)
 			where T : ServiceBusConfigurator
 		{
-			//configurator.UseControlBus();
-
 			var cfg = new ClusterConfigurator();
 			configure(cfg);
 

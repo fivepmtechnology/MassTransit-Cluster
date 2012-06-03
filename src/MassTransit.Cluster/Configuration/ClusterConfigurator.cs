@@ -46,14 +46,14 @@ namespace MassTransit.Cluster.Configuration
 			_settings.ElectionPeriod = period;
 		}
 
-		public void AddWonCoordinatorHandler(Action<IServiceBus> handler)
+		public void AddPromotionHandler(Action<IServiceBus> handler)
 		{
-			_settings.WonCoordinator += handler;
+			_settings.Promotion += handler;
 		}
 
-		public void AddLostCoordinatorHandler(Action handler)
+		public void AddDemotionHandler(Action handler)
 		{
-			_settings.LostCoordinator += handler;
+			_settings.Demotion += handler;
 		}
 
 		public void SetHeartbeatInterval(TimeSpan interval)

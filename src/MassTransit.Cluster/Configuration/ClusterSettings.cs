@@ -25,17 +25,17 @@ namespace MassTransit.Cluster.Configuration
 		/// </summary>
 		public TimeSpan HeartbeatInterval { get; set; }
 
-		public event Action<IServiceBus> WonCoordinator;
-		public void OnWonCoordinator(IServiceBus bus)
+		public event Action<IServiceBus> Promotion;
+		public void OnPromotion(IServiceBus bus)
 		{
-			Action<IServiceBus> handler = WonCoordinator;
+			Action<IServiceBus> handler = Promotion;
 			if (handler != null) handler(bus);
 		}
 
-		public event Action LostCoordinator;
-		public void OnLostCoordinator()
+		public event Action Demotion;
+		public void OnDemotion()
 		{
-			Action handler = LostCoordinator;
+			Action handler = Demotion;
 			if (handler != null) handler();
 		}
 	}

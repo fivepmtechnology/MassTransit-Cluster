@@ -42,8 +42,8 @@ namespace MassTransit.Cluster
         {
             if (message.SourceIndex >= _settings.EndpointIndex)
                 return;
-
-            // _log.InfoFormat("#{1} sees election from #{0}", message.SourceIndex, _settings.EndpointIndex);
+            
+			// _log.InfoFormat("#{1} sees election from #{0}", message.SourceIndex, _settings.EndpointIndex);
 
             RaiseEvent(ElectionReceived);
         }
@@ -150,7 +150,7 @@ namespace MassTransit.Cluster
             var message = new Leader { SourceIndex = _settings.EndpointIndex };
             _bus.Publish(message); // broadcast victory
 
-            _settings.OnWonCoordinator(_bus);
+            _settings.OnPromotion(_bus);
         }
 
         static ClusterService()
@@ -281,7 +281,7 @@ namespace MassTransit.Cluster
                         var response = new Answer { SourceIndex = workflow.Settings.EndpointIndex };
                         workflow._bus.Publish(response); // sends "I am alive" reply
 
-                        lock (workflow.Settings) workflow.Settings.OnLostCoordinator();
+                        lock (workflow.Settings) workflow.Settings.OnDemotion();
 
                         workflow.HoldElection();
                     })
@@ -292,7 +292,7 @@ namespace MassTransit.Cluster
                     {
                         workflow._log.InfoFormat("#{0} sees an incorrect claim to have won", workflow.Settings.EndpointIndex);
 
-                        lock (workflow.Settings) workflow.Settings.OnLostCoordinator();
+                        lock (workflow.Settings) workflow.Settings.OnDemotion();
 
                         workflow.HoldElection();
                     }),
@@ -305,7 +305,7 @@ namespace MassTransit.Cluster
 						// save the announced leader index
 						workflow.LeaderIndex = index;
 
-                        lock (workflow.Settings) workflow.Settings.OnLostCoordinator();
+                        lock (workflow.Settings) workflow.Settings.OnDemotion();
 
 						// wait for heartbeats
 						var doubleInterval = new TimeSpan(workflow.Settings.HeartbeatInterval.Ticks * 2);
