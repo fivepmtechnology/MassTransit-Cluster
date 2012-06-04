@@ -2,13 +2,20 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MassTransit.BusConfigurators;
 using MassTransit.BusServiceConfigurators;
 
 namespace MassTransit.Cluster.Configuration
 {
 	class ClusterConfigurator : BusServiceConfigurator, IClusterConfigurator
 	{
+		public ServiceBusConfigurator BusConfigurator { get; private set; }
 		private readonly ClusterSettings _settings = new ClusterSettings();
+
+		public ClusterConfigurator(ServiceBusConfigurator configurator)
+		{
+			BusConfigurator = configurator;
+		}
 
 		/// <summary>
 		/// Creates the cluster service instance

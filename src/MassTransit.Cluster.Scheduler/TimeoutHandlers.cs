@@ -53,6 +53,7 @@ namespace MassTransit.Cluster.Scheduler
 				{TagKey, message.Tag}
 			});
 			jobBuilder.WithIdentity(CorrelationIdToJobKey(message.CorrelationId));
+			jobBuilder.RequestRecovery();
 			var jobDetail = jobBuilder.Build();
 
 			var triggerBuilder = TriggerBuilder.Create();

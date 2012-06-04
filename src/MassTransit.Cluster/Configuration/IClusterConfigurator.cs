@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MassTransit.BusConfigurators;
 
 namespace MassTransit.Cluster.Configuration
 {
@@ -12,5 +13,7 @@ namespace MassTransit.Cluster.Configuration
 		void SetElectionPeriod(TimeSpan period);
 		void AddPromotionHandler(Action<IServiceBus> handler);
 		void AddDemotionHandler(Action handler);
+
+		ServiceBusConfigurator BusConfigurator { get; }
 	}
 }

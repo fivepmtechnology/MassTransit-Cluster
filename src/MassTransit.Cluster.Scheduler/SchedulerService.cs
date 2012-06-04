@@ -35,7 +35,6 @@ namespace MassTransit.Cluster.Scheduler
         public void Start(IServiceBus bus)
         {
             bus.SubscribeConsumer(() => new TimeoutHandlers(_scheduler));
-        	_scheduler.Start();
         }
 
         /// <summary>
