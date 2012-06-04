@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MassTransit.Logging;
 using MassTransit.Services.Timeout.Messages;
 using Quartz;
 using Quartz.Impl;
@@ -14,12 +15,18 @@ namespace MassTransit.Cluster.Scheduler
 		private const string CorrelationIdKey = "CorrelationId";
 		private const string TagKey = "Tag";
 
+		private readonly ILog _log = Logger.Get(typeof(TimeoutHandlers));
+
 		private class TimeoutMessageJob : IJob
 		{
 			private readonly IServiceBus _bus;
 
+			private readonly ILog _log = Logger.Get(typeof(TimeoutMessageJob));
+
 			public void Execute(IJobExecutionContext context)
 			{
+				_log.Debug("Executing scheduled timeout job");
+
 				var correlationId = (Guid)context.MergedJobDataMap[CorrelationIdKey];
 				var tag = (int)context.MergedJobDataMap[TagKey];
 				var message = new TimeoutExpired
@@ -45,6 +52,8 @@ namespace MassTransit.Cluster.Scheduler
 
 		public void Consume(ScheduleTimeout message)
 		{
+			_log.Debug("Scheduling timeout with Quartz");
+
 			// construct job info
 			var jobBuilder = JobBuilder.Create<TimeoutMessageJob>();
 			jobBuilder.UsingJobData(new JobDataMap

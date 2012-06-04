@@ -13,8 +13,9 @@ namespace MassTransit.Cluster.Scheduler
 
         private readonly IServiceBus _bus;
         private readonly ILog _log = Logger.Get(typeof(SchedulerService));
+    	private UnsubscribeAction _unsubscribe;
 
-        internal SchedulerService([NotNull] IScheduler scheduler, [NotNull] IServiceBus bus)
+    	internal SchedulerService([NotNull] IScheduler scheduler, [NotNull] IServiceBus bus)
         {
             _scheduler = scheduler;
 
@@ -34,7 +35,7 @@ namespace MassTransit.Cluster.Scheduler
         /// <param name="bus">The service bus</param>
         public void Start(IServiceBus bus)
         {
-            bus.SubscribeConsumer(() => new TimeoutHandlers(_scheduler));
+            _unsubscribe = bus.SubscribeConsumer(() => new TimeoutHandlers(_scheduler));
         }
 
         /// <summary>
