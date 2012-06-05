@@ -17,6 +17,11 @@ namespace MassTransit.Cluster.Configuration
 			BusConfigurator = configurator;
 		}
 
+		public void AddClusterServiceConfigurator(IClusterServiceConfigurator configurator)
+		{
+			_settings.Configurators.Add(configurator);
+		}
+
 		/// <summary>
 		/// Creates the cluster service instance
 		/// </summary>

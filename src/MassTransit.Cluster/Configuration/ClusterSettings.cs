@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MassTransit.Cluster.Configuration
 {
@@ -8,6 +9,8 @@ namespace MassTransit.Cluster.Configuration
 		{
 			ElectionPeriod = TimeSpan.FromSeconds(10);
 			HeartbeatInterval = TimeSpan.FromSeconds(15);
+
+			Configurators = new HashSet<IClusterServiceConfigurator>();
 		}
 
 		/// <summary>
@@ -38,5 +41,6 @@ namespace MassTransit.Cluster.Configuration
 			Action handler = Demotion;
 			if (handler != null) handler();
 		}
+		public ISet<IClusterServiceConfigurator> Configurators { get; set; }
 	}
 }

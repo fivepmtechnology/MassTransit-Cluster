@@ -27,7 +27,6 @@ namespace MassTransit.Cluster.Scheduler.Tests
 		{
 			var quartzBuilder = new StdSchedulerFactory();
 			quartzBuilder.Initialize();
-			var scheduler = quartzBuilder.GetScheduler();
 
 			var bus = ServiceBusFactory.New(sbi =>
 			{
@@ -38,20 +37,22 @@ namespace MassTransit.Cluster.Scheduler.Tests
 				{
 					cc.SetEndpointIndex(1);
 					cc.SetElectionPeriod(TimeSpan.FromSeconds(5));
-					cc.UseScheduler(scheduler);
+					cc.UseScheduler(quartzBuilder.GetScheduler);
 				});
 				sbi.EnableMessageTracing();
 				sbi.UseNLog(_logFactory);
 			});
 
 			var evt = new ManualResetEventSlim(false);
-			Thread.Sleep(5000);
-			bus.Publish(new ScheduleTimeout(Guid.Empty, TimeSpan.FromSeconds(10)));
 			bus.SubscribeHandler<TimeoutExpired>(m =>
 			{
 				evt.Set();
 			});
 
+			Thread.Sleep(5000);
+
+			bus.Publish(new ScheduleTimeout(Guid.Empty, TimeSpan.FromSeconds(10)));
+	
 			Assert.IsTrue(evt.Wait(TimeSpan.FromSeconds(30)), "Didn't get a timeout expired message");
 		}
 	}

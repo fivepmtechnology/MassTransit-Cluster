@@ -7,13 +7,15 @@ using MassTransit.Logging;
 using MassTransit.Services.Timeout.Messages;
 using Quartz;
 using Quartz.Impl;
+using Quartz.Spi;
 
 namespace MassTransit.Cluster.Scheduler
 {
-	public class TimeoutHandlers : Consumes<ScheduleTimeout>.All, Consumes<CancelTimeout>.All
+	public class TimeoutHandlers : Consumes<ScheduleTimeout>.Context, Consumes<CancelTimeout>.All
 	{
 		private const string CorrelationIdKey = "CorrelationId";
 		private const string TagKey = "Tag";
+		private const string MessageIdKey = "MessageId";
 
 		private readonly ILog _log = Logger.Get(typeof(TimeoutHandlers));
 
@@ -23,18 +25,32 @@ namespace MassTransit.Cluster.Scheduler
 
 			private readonly ILog _log = Logger.Get(typeof(TimeoutMessageJob));
 
+			public TimeoutMessageJob(IServiceBus bus)
+			{
+				_bus = bus;
+			}
+
 			public void Execute(IJobExecutionContext context)
 			{
 				_log.Debug("Executing scheduled timeout job");
 
-				var correlationId = (Guid)context.MergedJobDataMap[CorrelationIdKey];
-				var tag = (int)context.MergedJobDataMap[TagKey];
-				var message = new TimeoutExpired
+				try
 				{
-					CorrelationId = correlationId,
-					Tag = tag
-				};
-				_bus.Publish(message);
+					var correlationId = (Guid) context.MergedJobDataMap[CorrelationIdKey];
+					var tag = (int) context.MergedJobDataMap[TagKey];
+					var message = new TimeoutExpired
+					{
+						CorrelationId = correlationId,
+						Tag = tag
+					};
+					_bus.Publish(message);
+				}
+				catch(Exception ex)
+				{
+					throw new JobExecutionException(ex);
+				}
+
+				_log.Debug("Published timeout message");
 			}
 		}
 
@@ -50,25 +66,26 @@ namespace MassTransit.Cluster.Scheduler
 			return new JobKey(correlationId.ToString(), null);
 		}
 
-		public void Consume(ScheduleTimeout message)
+		public void Consume(IConsumeContext<ScheduleTimeout> message)
 		{
 			_log.Debug("Scheduling timeout with Quartz");
-
+			
 			// construct job info
 			var jobBuilder = JobBuilder.Create<TimeoutMessageJob>();
 			jobBuilder.UsingJobData(new JobDataMap
 			{
-				{CorrelationIdKey, message.CorrelationId},
-				{TagKey, message.Tag}
+				{CorrelationIdKey, message.Message.CorrelationId},
+				{TagKey, message.Message.Tag},
+				{MessageIdKey, message.MessageId}
 			});
-			jobBuilder.WithIdentity(CorrelationIdToJobKey(message.CorrelationId));
-			jobBuilder.RequestRecovery();
+			jobBuilder.WithIdentity(CorrelationIdToJobKey(message.Message.CorrelationId));
+			jobBuilder.RequestRecovery(true);
+			jobBuilder.StoreDurably(false);
 			var jobDetail = jobBuilder.Build();
 
 			var triggerBuilder = TriggerBuilder.Create();
-			triggerBuilder.StartAt(new DateTimeOffset(message.TimeoutAt));
+			triggerBuilder.StartAt(new DateTimeOffset(message.Message.TimeoutAt));
 			var trigger = triggerBuilder.Build();
-			// start on the next even hour
 			_scheduler.ScheduleJob(jobDetail, trigger);
 		}
 

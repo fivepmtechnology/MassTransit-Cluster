@@ -4,35 +4,28 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MassTransit.BusServiceConfigurators;
+using MassTransit.Cluster.Configuration;
 using Quartz;
 
 namespace MassTransit.Cluster.Scheduler.Configuration
 {
-	internal class SchedulerConfigurator : BusServiceConfigurator
+	internal class SchedulerConfigurator : IClusterServiceConfigurator
 	{
-		private readonly IScheduler _scheduler;
+		private readonly Func<IScheduler> _schedulerFactory;
 
-		public SchedulerConfigurator(IScheduler scheduler)
+		public SchedulerConfigurator(Func<IScheduler> schedulerFactory)
 		{
-			_scheduler = scheduler;
+			_schedulerFactory = schedulerFactory;
 		}
 
-		/// <summary>
-		/// Creates the service
-		/// </summary>
-		/// <param name="bus"/>
-		/// <returns>
-		/// The instance of the service
-		/// </returns>
-		public IBusService Create(IServiceBus bus)
+		public IClusterService Create(IServiceBus bus)
 		{
-			return new SchedulerService(_scheduler, bus);
+			return new SchedulerService(_schedulerFactory, bus);
 		}
 
 		/// <summary>
 		/// Returns the type of the service created by the configurator
 		/// </summary>
 		public Type ServiceType { get { return typeof (SchedulerService); } }
-		public BusServiceLayer Layer { get { return BusServiceLayer.Presentation; } }
 	}
 }

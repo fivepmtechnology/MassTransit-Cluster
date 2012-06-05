@@ -14,6 +14,8 @@ namespace MassTransit.Cluster.Configuration
 		void AddPromotionHandler(Action<IServiceBus> handler);
 		void AddDemotionHandler(Action handler);
 
+		void AddClusterServiceConfigurator(IClusterServiceConfigurator configurator);
+
 		ServiceBusConfigurator BusConfigurator { get; }
 	}
 }

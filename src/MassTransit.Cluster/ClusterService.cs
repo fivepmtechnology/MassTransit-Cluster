@@ -26,9 +26,14 @@ namespace MassTransit.Cluster
         private readonly Timer _heartbeatTimer; // send heartbeats periodically while the service is running
         private readonly ILog _log = Logger.Get(typeof(ClusterService));
 
+    	private readonly ISet<IClusterService> _services = new HashSet<IClusterService>(); 
+
         internal ClusterService([NotNull] ClusterSettings settings, [NotNull] IServiceBus bus)
         {
             _settings = settings;
+
+			foreach (var service in settings.Configurators)
+				_services.Add(service.Create(bus));
 
             _bus = bus.ControlBus;
 
@@ -91,6 +96,9 @@ namespace MassTransit.Cluster
         {
             bus.SubscribeInstance(this);
 
+			foreach (var service in _services)
+				service.Start(bus);
+
             _heartbeatTimer.Change(_settings.HeartbeatInterval);
 
             RaiseEvent(ElectionReceived);
@@ -101,6 +109,9 @@ namespace MassTransit.Cluster
         /// </summary>
         public void Stop()
         {
+			foreach (var service in _services)
+				service.Stop();
+
             RaiseEvent(StopRequested);
         }
 
@@ -139,21 +150,26 @@ namespace MassTransit.Cluster
             LeaderIndex = null;
         }
 
-        private void DeclareWinner()
-        {
-            // "If P hears from no process with a higher process ID than it, it wins the election and broadcasts victory."
+		private void DeclareWinner()
+		{
+			// "If P hears from no process with a higher process ID than it, it wins the election and broadcasts victory."
 
-            _log.InfoFormat("#{0} won the election", _settings.EndpointIndex);
+			_log.InfoFormat("#{0} won the election", _settings.EndpointIndex);
 
-            LeaderIndex = _settings.EndpointIndex; // win the election
+			LeaderIndex = _settings.EndpointIndex; // win the election
 
-            var message = new Leader { SourceIndex = _settings.EndpointIndex };
-            _bus.Publish(message); // broadcast victory
+			var message = new Leader {SourceIndex = _settings.EndpointIndex};
+			_bus.Publish(message); // broadcast victory
 
-            _settings.OnPromotion(_bus);
-        }
+			lock (_settings)
+			{
+				_settings.OnPromotion(_bus);
+				foreach (var service in _services)
+					service.Promoted(_bus);
+			}
+		}
 
-        static ClusterService()
+    	static ClusterService()
         {
             Define(() =>
             {
@@ -281,9 +297,14 @@ namespace MassTransit.Cluster
                         var response = new Answer { SourceIndex = workflow.Settings.EndpointIndex };
                         workflow._bus.Publish(response); // sends "I am alive" reply
 
-                        lock (workflow.Settings) workflow.Settings.OnDemotion();
+						lock (workflow.Settings)
+						{
+							workflow.Settings.OnDemotion();
+							foreach (var service in workflow._services)
+								service.Demoted();
+						}
 
-                        workflow.HoldElection();
+                    	workflow.HoldElection();
                     })
                     .TransitionTo(Election),
 
@@ -292,7 +313,12 @@ namespace MassTransit.Cluster
                     {
                         workflow._log.InfoFormat("#{0} sees an incorrect claim to have won", workflow.Settings.EndpointIndex);
 
-                        lock (workflow.Settings) workflow.Settings.OnDemotion();
+						lock (workflow.Settings)
+						{
+							workflow.Settings.OnDemotion();
+							foreach (var service in workflow._services)
+								service.Demoted();
+						}
 
                         workflow.HoldElection();
                     }),
