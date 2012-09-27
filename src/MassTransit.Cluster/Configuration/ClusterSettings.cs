@@ -7,40 +7,28 @@ namespace MassTransit.Cluster.Configuration
 	{
 		public ClusterSettings()
 		{
-			ElectionPeriod = TimeSpan.FromSeconds(10);
-			HeartbeatInterval = TimeSpan.FromSeconds(15);
-
-			Configurators = new HashSet<IClusterServiceConfigurator>();
+		    // defaults
+		    HeartbeatInterval = TimeSpan.FromSeconds(15);
 		}
 
 		/// <summary>
-		/// The index of the current system in the grid
-		/// </summary>
-		public uint EndpointIndex { get; set; }
-
-		/// <summary>
-		/// The length of time to leave an election open, before declaring a winner
-		/// </summary>
-		public TimeSpan ElectionPeriod { get; set; }
-
-		/// <summary>
-		/// The length of time between heartbeats
+		/// The length of time between heartbeats. (Default: 15s)
 		/// </summary>
 		public TimeSpan HeartbeatInterval { get; set; }
 
-		public event Action<IServiceBus> Promotion;
-		public void OnPromotion(IServiceBus bus)
-		{
-			Action<IServiceBus> handler = Promotion;
-			if (handler != null) handler(bus);
-		}
+        /// <summary>
+        /// The total number of endpoints.
+        /// </summary>
+        public uint EndpointCount { get; set; }
 
-		public event Action Demotion;
-		public void OnDemotion()
-		{
-			Action handler = Demotion;
-			if (handler != null) handler();
-		}
-		public ISet<IClusterServiceConfigurator> Configurators { get; set; }
+        /// <summary>
+        /// The numeric index of the endpoint
+        /// </summary>
+        public uint EndpointIndex { get; internal set; }
+
+        /// <summary>
+        /// The timeout before an endpoint is decided to be dead.
+        /// </summary>
+        public TimeSpan Timeout { get; set; }
 	}
 }

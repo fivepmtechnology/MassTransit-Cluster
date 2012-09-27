@@ -17,11 +17,6 @@ namespace MassTransit.Cluster.Configuration
 			BusConfigurator = configurator;
 		}
 
-		public void AddClusterServiceConfigurator(IClusterServiceConfigurator configurator)
-		{
-			_settings.Configurators.Add(configurator);
-		}
-
 		/// <summary>
 		/// Creates the cluster service instance
 		/// </summary>
@@ -53,22 +48,12 @@ namespace MassTransit.Cluster.Configuration
 			_settings.EndpointIndex = index;
 		}
 
-		public void SetElectionPeriod(TimeSpan period)
-		{
-			_settings.ElectionPeriod = period;
-		}
+	    public void SetEndpointCount(uint count)
+	    {
+	        _settings.EndpointCount = count;
+	    }
 
-		public void AddPromotionHandler(Action<IServiceBus> handler)
-		{
-			_settings.Promotion += handler;
-		}
-
-		public void AddDemotionHandler(Action handler)
-		{
-			_settings.Demotion += handler;
-		}
-
-		public void SetHeartbeatInterval(TimeSpan interval)
+	    public void SetHeartbeatInterval(TimeSpan interval)
 		{
 			_settings.HeartbeatInterval = interval;
 		}

@@ -7,6 +7,7 @@ namespace MassTransit.Cluster.Messages
 {
 	public class Heartbeat : IClusterMessage
 	{
-		public uint SourceIndex { get; set; }
+	    public uint SourceIndex { get; set; }
+	    public uint[] Clock { get; set; }
 	}
 }
